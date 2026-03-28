@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Dental SaaS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="login">
+  <h2>Login</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="error"></p>
+</div>
+
+<!-- APP -->
+<div id="app" class="container">
+
+  <div class="sidebar">
+    <h2>🦷 Dental</h2>
+    <button onclick="show('dashboard')">Dashboard</button>
+    <button onclick="show('patients')">Patients</button>
+    <button onclick="goAdmin()">Admin</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="main">
+
+    <div id="dashboard">
+      <h2>Dashboard</h2>
+      <h3>Patients: <span id="count">0</span></h3>
+    </div>
+
+    <div id="patients">
+      <input id="name" placeholder="Name">
+      <input id="phone" placeholder="Phone">
+      <button onclick="addPatient()">Add</button>
+      <ul id="list"></ul>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>
