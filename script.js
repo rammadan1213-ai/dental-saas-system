@@ -24,13 +24,12 @@ import {
 // ==================== FIREBASE CONFIGURATION ====================
 // REPLACE WITH YOUR FIREBASE CONFIG FROM FIREBASE CONSOLE
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "YOUR_API_KEY",  // ← CHANGE THIS
+    authDomain: "YOUR_PROJECT.firebaseapp.com",  // ← CHANGE THIS
+    projectId: "YOUR_PROJECT_ID",  // ← CHANGE THIS
+    // ... etc
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
