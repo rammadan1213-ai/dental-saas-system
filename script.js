@@ -22,14 +22,21 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ==================== FIREBASE CONFIGURATION ====================
-// REPLACE WITH YOUR FIREBASE CONFIG FROM FIREBASE CONSOLE
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",  // ← CHANGE THIS
-    authDomain: "YOUR_PROJECT.firebaseapp.com",  // ← CHANGE THIS
-    projectId: "YOUR_PROJECT_ID",  // ← CHANGE THIS
-    // ... etc
-};
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCnVrv-PkGB_s_RW6ILTuK5W_H1rR07diY",
+  authDomain: "dentalcare-pro-d5c6d.firebaseapp.com",
+  databaseURL: "https://dentalcare-pro-d5c6d-default-rtdb.firebaseio.com",
+  projectId: "dentalcare-pro-d5c6d",
+  storageBucket: "dentalcare-pro-d5c6d.firebasestorage.app",
+  messagingSenderId: "484161565673",
+  appId: "1:484161565673:web:52bf7f19b45e7d7abed178"
+};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
