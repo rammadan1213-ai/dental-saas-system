@@ -1,396 +1,176 @@
+<!-- ================= UPDATED index.html (ADVANCED) ================= -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DentalCare Pro - Multi-Hospital Management System</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DentalCare Pro</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="login-screen">
-        <div class="login-box">
-            <h2 style="color: var(--primary);">🦷 DentalCare Pro</h2>
-            <p style="color: #6b7280; margin-bottom: 25px;">Multi-Hospital Cloud System</p>
-            <input type="email" id="loginEmail" placeholder="Email Address" autocomplete="off">
-            <input type="password" id="loginPassword" placeholder="Password">
-            <button id="loginBtn">🔐 Login to Dashboard</button>
-            <div id="loginError" style="color: #ef4444; margin-top: 15px; display: none;"></div>
-            <hr style="margin: 20px 0;">
-            <div style="font-size: 12px; color: #6b7280; text-align: left;">
-                <strong>Demo Accounts:</strong><br>
-                Super Admin: superadmin@dental.com / admin123<br>
-                Hospital Admin: admin@sunshine.com / admin123<br>
-                Dentist: dentist@sunshine.com / dentist123
-            </div>
-        </div>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <h2>🦷 DentalCare Pro</h2>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<div id="mainContainer" class="container">
+  <div class="sidebar">
+    <button class="nav-link" data-section="dashboard">Dashboard</button>
+    <button class="nav-link" data-section="patients">Patients</button>
+    <button class="nav-link logout-btn">Logout</button>
+  </div>
+
+  <div class="main-content">
+    <div id="dashboard" class="section active">
+      <h2>Dashboard</h2>
+      <h3>Total Patients: <span id="totalPatients">0</span></h3>
     </div>
 
-    <!-- MAIN APP -->
-    <div id="mainContainer" class="container">
-        <div class="sidebar">
-            <div class="logo">
-                <i>🦷</i>
-                <h2>DentalCare Pro</h2>
-            </div>
-            <div class="user-info" id="userInfo"></div>
-            <button class="nav-link active" data-section="dashboard">📊 Dashboard</button>
-            <button class="nav-link" data-section="patients" data-permission="view_patients">👥 Patients</button>
-            <button class="nav-link" data-section="appointments" data-permission="view_appointments">📅 Appointments</button>
-            <button class="nav-link" data-section="treatments" data-permission="view_treatments">🦷 Treatments</button>
-            <button class="nav-link" data-section="billing" data-permission="view_billing">💰 Billing</button>
-            <button class="nav-link" data-section="inventory" data-permission="view_inventory">💊 Inventory</button>
-            <button class="nav-link" data-section="users" data-permission="manage_users">👥 Staff Users</button>
-            <button class="nav-link" data-section="hospitals" id="navHospitals" style="display: none;">🏥 Hospitals</button>
-            <button class="nav-link logout-btn">🚪 Logout</button>
-        </div>
+    <div id="patients" class="section">
+      <h2>Patients</h2>
+      <input id="patientName" placeholder="Name">
+      <input id="patientPhone" placeholder="Phone">
+      <input id="patientEmail" placeholder="Email">
+      <button id="savePatientBtn">Save</button>
 
-        <div class="main-content">
-            <!-- DASHBOARD SECTION -->
-            <div id="dashboard" class="section active">
-                <h2>📊 Dashboard Overview</h2>
-                <div id="hospitalNameDisplay" style="color: var(--primary); margin-bottom: 20px;"></div>
-                <div class="dashboard-cards">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Total Patients</h3>
-                            <i>👥</i>
-                        </div>
-                        <div class="number" id="totalPatients">0</div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Today's Appointments</h3>
-                            <i>📅</i>
-                        </div>
-                        <div class="number" id="todayAppointments">0</div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Monthly Revenue</h3>
-                            <i>💰</i>
-                        </div>
-                        <div class="number" id="monthlyRevenue">$0</div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Pending Bills</h3>
-                            <i>⚠️</i>
-                        </div>
-                        <div class="number" id="pendingBills">0</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- PATIENTS SECTION -->
-            <div id="patients" class="section">
-                <h2>👥 Patient Management</h2>
-                <div class="form-grid">
-                    <input type="hidden" id="patientId">
-                    <div class="form-group">
-                        <label>Full Name *</label>
-                        <input type="text" id="patientName" placeholder="Full Name">
-                    </div>
-                    <div class="form-group">
-                        <label>Phone Number *</label>
-                        <input type="tel" id="patientPhone" placeholder="Phone Number">
-                    </div>
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" id="patientEmail" placeholder="Email Address">
-                    </div>
-                    <div class="form-group">
-                        <label>Address</label>
-                        <textarea id="patientAddress" rows="2" placeholder="Address"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Date of Birth</label>
-                        <input type="date" id="patientDob">
-                    </div>
-                    <div class="form-group">
-                        <label>Medical History</label>
-                        <textarea id="patientHistory" rows="2" placeholder="Medical History"></textarea>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="savePatientBtn">💾 Save Patient</button>
-                <button class="btn btn-info" id="clearPatientBtn">🗑️ Clear Form</button>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr><th>Name</th><th>Phone</th><th>Email</th><th>Actions</th</tr>
-                        </thead>
-                        <tbody id="patientsTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- APPOINTMENTS SECTION -->
-            <div id="appointments" class="section">
-                <h2>📅 Appointment Scheduling</h2>
-                <div class="form-grid">
-                    <input type="hidden" id="appointmentId">
-                    <div class="form-group">
-                        <label>Patient *</label>
-                        <select id="appointmentPatientId"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Date *</label>
-                        <input type="date" id="appointmentDate">
-                    </div>
-                    <div class="form-group">
-                        <label>Time *</label>
-                        <input type="time" id="appointmentTime">
-                    </div>
-                    <div class="form-group">
-                        <label>Dentist</label>
-                        <select id="appointmentDentist">
-                            <option value="Dr. Smith">Dr. Smith</option>
-                            <option value="Dr. Johnson">Dr. Johnson</option>
-                            <option value="Dr. Williams">Dr. Williams</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="appointmentStatus">
-                            <option value="scheduled">Scheduled</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Notes</label>
-                        <textarea id="appointmentNotes" rows="2" placeholder="Additional notes"></textarea>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="saveAppointmentBtn">💾 Save Appointment</button>
-                <button class="btn btn-info" id="clearAppointmentBtn">🗑️ Clear Form</button>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr><th>Patient</th><th>Date</th><th>Time</th><th>Dentist</th><th>Status</th><th>Actions</th</tr>
-                        </thead>
-                        <tbody id="appointmentsTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- TREATMENTS SECTION -->
-            <div id="treatments" class="section">
-                <h2>🦷 Treatment Records</h2>
-                <div class="form-grid">
-                    <input type="hidden" id="treatmentId">
-                    <div class="form-group">
-                        <label>Patient *</label>
-                        <select id="treatmentPatientId"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Treatment Type *</label>
-                        <select id="treatmentType">
-                            <option value="Cleaning">Cleaning</option>
-                            <option value="Filling">Filling</option>
-                            <option value="Extraction">Extraction</option>
-                            <option value="Root Canal">Root Canal</option>
-                            <option value="Crown">Crown</option>
-                            <option value="Whitening">Whitening</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Date *</label>
-                        <input type="date" id="treatmentDate">
-                    </div>
-                    <div class="form-group">
-                        <label>Cost ($)</label>
-                        <input type="number" id="treatmentCost" placeholder="Cost in USD">
-                    </div>
-                    <div class="form-group">
-                        <label>Notes</label>
-                        <textarea id="treatmentNotes" rows="2" placeholder="Treatment notes"></textarea>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="saveTreatmentBtn">💾 Save Treatment</button>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr><th>Patient</th><th>Treatment</th><th>Date</th><th>Cost</th><th>Actions</th</tr>
-                        </thead>
-                        <tbody id="treatmentsTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- BILLING SECTION -->
-            <div id="billing" class="section">
-                <h2>💰 Billing & Invoices</h2>
-                <div class="form-grid">
-                    <input type="hidden" id="billingId">
-                    <div class="form-group">
-                        <label>Patient *</label>
-                        <select id="billingPatientId"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Amount ($) *</label>
-                        <input type="number" id="billingAmount" placeholder="Amount">
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="billingStatus">
-                            <option value="pending">Pending</option>
-                            <option value="paid">Paid</option>
-                            <option value="overdue">Overdue</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Due Date</label>
-                        <input type="date" id="billingDueDate">
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea id="billingDescription" rows="2" placeholder="Invoice description"></textarea>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="saveBillingBtn">💾 Create Invoice</button>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr><th>Patient</th><th>Amount</th><th>Status</th><th>Due Date</th><th>Actions</th</tr>
-                        </thead>
-                        <tbody id="billingTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- INVENTORY SECTION -->
-            <div id="inventory" class="section">
-                <h2>💊 Inventory Management</h2>
-                <div class="form-grid">
-                    <input type="hidden" id="inventoryId">
-                    <div class="form-group">
-                        <label>Item Name *</label>
-                        <input type="text" id="inventoryName" placeholder="Item name">
-                    </div>
-                    <div class="form-group">
-                        <label>Quantity *</label>
-                        <input type="number" id="inventoryQuantity" placeholder="Quantity">
-                    </div>
-                    <div class="form-group">
-                        <label>Unit Price ($)</label>
-                        <input type="number" id="inventoryPrice" placeholder="Price per unit">
-                    </div>
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select id="inventoryCategory">
-                            <option value="Medication">Medication</option>
-                            <option value="Equipment">Equipment</option>
-                            <option value="Supplies">Supplies</option>
-                        </select>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="saveInventoryBtn">💾 Save Item</button>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr><th>Item Name</th><th>Quantity</th><th>Price</th><th>Category</th><th>Actions</th</tr>
-                        </thead>
-                        <tbody id="inventoryTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- STAFF USERS SECTION -->
-            <div id="users" class="section">
-                <h2>👥 Staff Management</h2>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Full Name *</label>
-                        <input type="text" id="userName" placeholder="Full Name">
-                    </div>
-                    <div class="form-group">
-                        <label>Email *</label>
-                        <input type="email" id="userEmail" placeholder="Email">
-                    </div>
-                    <div class="form-group">
-                        <label>Password *</label>
-                        <input type="password" id="userPassword" placeholder="Password (min 6 chars)">
-                    </div>
-                    <div class="form-group">
-                        <label>Role *</label>
-                        <select id="userRole">
-                            <option value="admin">Hospital Admin</option>
-                            <option value="dentist">Dentist</option>
-                            <option value="receptionist">Receptionist</option>
-                        </select>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="saveUserBtn">➕ Create Staff User</button>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th</tr>
-                        </thead>
-                        <tbody id="usersTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- HOSPITALS SECTION (SUPER ADMIN ONLY) -->
-            <div id="hospitals" class="section">
-                <h2>🏥 Hospital Management</h2>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Hospital Name *</label>
-                        <input type="text" id="hospitalName" placeholder="e.g., Sunshine Dental Clinic">
-                    </div>
-                    <div class="form-group">
-                        <label>Admin Email *</label>
-                        <input type="email" id="hospitalAdminEmail" placeholder="admin@clinic.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Phone</label>
-                        <input type="tel" id="hospitalPhone" placeholder="Phone number">
-                    </div>
-                    <div class="form-group">
-                        <label>Address</label>
-                        <textarea id="hospitalAddress" rows="2" placeholder="Clinic address"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Subscription Plan</label>
-                        <select id="hospitalPlan">
-                            <option value="trial">Trial (30 days)</option>
-                            <option value="basic">Basic ($99/month)</option>
-                            <option value="professional">Professional ($299/month)</option>
-                            <option value="enterprise">Enterprise ($999/month)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="hospitalStatus">
-                            <option value="active">Active</option>
-                            <option value="suspended">Suspended</option>
-                            <option value="expired">Expired</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Expiry Date</label>
-                        <input type="date" id="hospitalExpiry">
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="saveHospitalBtn">➕ Add Hospital</button>
-                <div class="table-container">
-                    <h3 style="margin: 20px 0 10px;">All Hospitals</h3>
-                    <table>
-                        <thead>
-                            <tr><th>Hospital Name</th><th>Admin Email</th><th>Plan</th><th>Status</th><th>Expiry</th><th>Actions</th</tr>
-                        </thead>
-                        <tbody id="hospitalsTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+      <table>
+        <tbody id="patientsTableBody"></tbody>
+      </table>
     </div>
+  </div>
+</div>
 
-    <div id="notification" class="notification"></div>
-
-    <script type="module" src="script.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>
+
+
+<!-- ================= UPDATED script.js (ADVANCED CRUD + DASHBOARD) ================= -->
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let editId = null;
+
+// LOGIN
+loginBtn.onclick = async () => {
+  try {
+    await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
+  } catch (e) {
+    loginError.textContent = e.message;
+  }
+};
+
+// AUTH
+onAuthStateChanged(auth, user => {
+  if (user) {
+    loginScreen.style.display = "none";
+    mainContainer.classList.add("show");
+    loadPatients();
+  }
+});
+
+// NAVIGATION
+document.querySelectorAll(".nav-link").forEach(btn => {
+  btn.onclick = () => {
+    if (btn.classList.contains("logout-btn")) {
+      signOut(auth);
+      location.reload();
+      return;
+    }
+
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.getElementById(btn.dataset.section).classList.add("active");
+  };
+});
+
+// SAVE / UPDATE PATIENT
+savePatientBtn.onclick = async () => {
+  if (!patientName.value || !patientPhone.value) {
+    alert("Name & phone required");
+    return;
+  }
+
+  if (editId) {
+    await updateDoc(doc(db, "patients", editId), {
+      name: patientName.value,
+      phone: patientPhone.value,
+      email: patientEmail.value
+    });
+    editId = null;
+  } else {
+    await addDoc(collection(db, "patients"), {
+      name: patientName.value,
+      phone: patientPhone.value,
+      email: patientEmail.value
+    });
+  }
+
+  patientName.value = "";
+  patientPhone.value = "";
+  patientEmail.value = "";
+};
+
+// LOAD PATIENTS + DASHBOARD
+function loadPatients() {
+  onSnapshot(collection(db, "patients"), snap => {
+    totalPatients.textContent = snap.size;
+
+    patientsTableBody.innerHTML = snap.docs.map(d => {
+      const p = d.data();
+      return `
+        <tr>
+          <td>${p.name}</td>
+          <td>${p.phone}</td>
+          <td>${p.email}</td>
+          <td>
+            <button onclick="editPatient('${d.id}','${p.name}','${p.phone}','${p.email}')">Edit</button>
+            <button onclick="deletePatient('${d.id}')">Delete</button>
+          </td>
+        </tr>`;
+    }).join("");
+  });
+}
+
+// DELETE
+window.deletePatient = async (id) => {
+  if (confirm("Delete this patient?")) {
+    await deleteDoc(doc(db, "patients", id));
+  }
+};
+
+// EDIT
+window.editPatient = (id, name, phone, email) => {
+  editId = id;
+  patientName.value = name;
+  patientPhone.value = phone;
+  patientEmail.value = email;
+};
+
+
+/* ================= UPDATED style.css ================= */
+body { font-family: Arial; }
+.container { display:none; }
+.container.show { display:flex; }
+.sidebar { width:200px; }
+.section { display:none; }
+.section.active { display:block; }
+button { margin:5px; padding:10px; cursor:pointer; }
+table { width:100%; border-collapse: collapse; }
+td { border:1px solid #ccc; padding:5px; }
