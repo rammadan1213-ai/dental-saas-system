@@ -38,7 +38,7 @@ const db = getFirestore(app);
 
 // ==================== SUPER ADMIN CONFIGURATION ====================
 // CHANGE THIS TO YOUR EMAIL ADDRESS!
-const SUPER_ADMIN_EMAIL = "superadmin@dental.com"; // ← CHANGE THIS TO YOUR EMAIL!
+const SUPER_ADMIN_EMAIL = "rammadan1213@gmail.com"; // ← CHANGE THIS TO YOUR EMAIL!
 
 // ==================== PERMISSIONS SYSTEM ====================
 const PERMISSIONS = {
