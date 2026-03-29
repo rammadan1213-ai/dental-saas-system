@@ -18,37 +18,39 @@ import {
     query, 
     where,
     Timestamp,
-    orderBy
+    getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyCnVrv-PkGB_s_RW6ILTuK5W_H1rR07diY",
-    authDomain: "dentalcare-pro-d5c6d.firebaseapp.com",
-    projectId: "dentalcare-pro-d5c6d",
-    storageBucket: "dentalcare-pro-d5c6d.firebasestorage.app",
-    messagingSenderId: "484161565673",
-    appId: "1:484161565673:web:52bf7f19b45e7d7abed178"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-</script>
-
-// ==================== PERMISSIONS SYSTEM ====================
-const ROLES = {
-    ADMIN: 'admin',
-    DENTIST: 'dentist',
-    RECEPTIONIST: 'receptionist'
+// ==================== FIREBASE CONFIGURATION ====================
+// REPLACE WITH YOUR FIREBASE CONFIG FROM FIREBASE CONSOLE
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ==================== SUPER ADMIN CONFIGURATION ====================
+// CHANGE THIS TO YOUR EMAIL ADDRESS!
+const SUPER_ADMIN_EMAIL = "superadmin@dental.com"; // ← CHANGE THIS TO YOUR EMAIL!
+
+// ==================== PERMISSIONS SYSTEM ====================
 const PERMISSIONS = {
+    superadmin: [
+        'view_dashboard', 'view_patients', 'add_patients', 'edit_patients', 'delete_patients',
+        'view_appointments', 'add_appointments', 'edit_appointments', 'delete_appointments',
+        'view_treatments', 'add_treatments', 'edit_treatments', 'delete_treatments',
+        'view_billing', 'add_billing', 'edit_billing', 'delete_billing',
+        'view_inventory', 'add_inventory', 'edit_inventory', 'delete_inventory',
+        'manage_users', 'manage_hospitals'
+    ],
     admin: [
         'view_dashboard', 'view_patients', 'add_patients', 'edit_patients', 'delete_patients',
         'view_appointments', 'add_appointments', 'edit_appointments', 'delete_appointments',
@@ -72,6 +74,7 @@ const PERMISSIONS = {
 
 let currentUser = null;
 let currentUserRole = null;
+let currentHospitalId = null;
 
 // ==================== HELPER FUNCTIONS ====================
 function showNotification(message, type = 'success') {
@@ -94,10 +97,18 @@ function hasPermission(permission) {
     return PERMISSIONS[currentUserRole]?.includes(permission) || false;
 }
 
-function formatDate(timestamp) {
-    if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString();
+function isSuperAdmin() {
+    return currentUser?.email === SUPER_ADMIN_EMAIL;
+}
+
+function getHospitalFilter(collectionName = null) {
+    if (isSuperAdmin()) {
+        return []; // Super admin sees ALL data
+    }
+    if (currentHospitalId) {
+        return [where("hospitalId", "==", currentHospitalId)];
+    }
+    return [where("hospitalId", "==", "none")]; // No data if no hospital
 }
 
 // ==================== AUTHENTICATION ====================
@@ -116,17 +127,49 @@ async function handleLogin() {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
-        // Get user role from Firestore
-        const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', user.uid)));
+        // Get user role and hospital from Firestore
+        const userQuery = await getDocs(query(collection(db, 'users'), where('uid', '==', user.uid)));
         let userRole = 'receptionist';
+        let hospitalId = null;
         
-        if (!userDoc.empty) {
-            userRole = userDoc.docs[0].data().role;
+        if (!userQuery.empty) {
+            const userData = userQuery.docs[0].data();
+            userRole = userData.role;
+            hospitalId = userData.hospitalId;
+        }
+        
+        // Check if super admin
+        if (email === SUPER_ADMIN_EMAIL) {
+            userRole = 'superadmin';
+            hospitalId = null;
+        }
+        
+        // If not super admin, check hospital status
+        if (email !== SUPER_ADMIN_EMAIL && hospitalId) {
+            const hospitalQuery = await getDocs(query(collection(db, 'hospitals'), where('hospitalId', '==', hospitalId)));
+            if (!hospitalQuery.empty) {
+                const hospital = hospitalQuery.docs[0].data();
+                if (hospital.status !== 'active') {
+                    await signOut(auth);
+                    errorDiv.textContent = 'Your clinic account is suspended. Please contact support.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                if (hospital.expiryDate && new Date(hospital.expiryDate) < new Date()) {
+                    await signOut(auth);
+                    errorDiv.textContent = 'Your subscription has expired. Please renew.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+            }
         }
         
         currentUser = { uid: user.uid, email: user.email, role: userRole };
         currentUserRole = userRole;
+        currentHospitalId = hospitalId;
+        
         localStorage.setItem('dentalUser', JSON.stringify(currentUser));
+        localStorage.setItem('dentalHospitalId', hospitalId);
         
         showApp();
         showNotification(`Welcome ${email}!`);
@@ -141,8 +184,10 @@ async function handleLogout() {
     try {
         await signOut(auth);
         localStorage.removeItem('dentalUser');
+        localStorage.removeItem('dentalHospitalId');
         currentUser = null;
         currentUserRole = null;
+        currentHospitalId = null;
         showLogin();
         showNotification('Logged out successfully');
     } catch (error) {
@@ -160,24 +205,31 @@ function showApp() {
     document.getElementById('mainContainer').classList.add('show');
     updateUserInfo();
     setupNavigationPermissions();
+    
+    // Load all data
     loadDashboard();
     loadPatients();
     loadAppointments();
     loadTreatments();
     loadBilling();
     loadInventory();
+    loadStaffUsers();
     
-    if (hasPermission('manage_users')) {
-        loadUsers();
+    if (isSuperAdmin()) {
+        loadHospitals();
+        document.getElementById('navHospitals').style.display = 'block';
+    } else {
+        document.getElementById('navHospitals').style.display = 'none';
     }
 }
 
 function updateUserInfo() {
     const userInfoDiv = document.getElementById('userInfo');
+    const roleDisplay = isSuperAdmin() ? 'SUPER ADMIN' : currentUserRole?.toUpperCase();
     userInfoDiv.innerHTML = `
         <div style="font-weight: bold;">${sanitize(currentUser?.email || 'User')}</div>
-        <div style="font-size: 12px;">${sanitize(currentUserRole?.toUpperCase() || 'USER')}</div>
-        <div class="role-badge role-${currentUserRole}">${currentUserRole?.toUpperCase()}</div>
+        <div style="font-size: 12px;">${roleDisplay}</div>
+        <div class="role-badge role-${isSuperAdmin() ? 'admin' : currentUserRole}">${roleDisplay}</div>
     `;
 }
 
@@ -188,6 +240,24 @@ function setupNavigationPermissions() {
             link.style.display = 'none';
         }
     });
+}
+
+// ==================== DASHBOARD ====================
+async function loadDashboard() {
+    if (!hasPermission('view_dashboard')) return;
+    
+    // Show hospital name if not super admin
+    if (!isSuperAdmin() && currentHospitalId) {
+        const hospitalQuery = await getDocs(query(collection(db, 'hospitals'), where('hospitalId', '==', currentHospitalId)));
+        if (!hospitalQuery.empty) {
+            const hospital = hospitalQuery.docs[0].data();
+            document.getElementById('hospitalNameDisplay').innerHTML = `<h3>🏥 ${sanitize(hospital.name)}</h3>`;
+        }
+    } else if (isSuperAdmin()) {
+        document.getElementById('hospitalNameDisplay').innerHTML = `<h3>👑 Super Admin - All Hospitals</h3>`;
+    }
+    
+    await loadPatientSelects();
 }
 
 // ==================== PATIENTS CRUD ====================
@@ -212,6 +282,7 @@ async function savePatient() {
     
     const patientData = {
         name, phone, email, address, dob, history,
+        hospitalId: isSuperAdmin() ? null : currentHospitalId,
         updatedAt: Timestamp.now()
     };
     
@@ -245,7 +316,13 @@ function clearPatientForm() {
 async function loadPatients() {
     if (!hasPermission('view_patients')) return;
     
-    onSnapshot(collection(db, 'patients'), (snapshot) => {
+    let patientsQuery = collection(db, 'patients');
+    const filters = getHospitalFilter();
+    if (filters.length > 0) {
+        patientsQuery = query(collection(db, 'patients'), ...filters);
+    }
+    
+    onSnapshot(patientsQuery, (snapshot) => {
         const tbody = document.getElementById('patientsTableBody');
         let html = '';
         
@@ -270,8 +347,9 @@ async function loadPatients() {
 }
 
 window.editPatient = async (id) => {
-    const docRef = await getDocs(query(collection(db, 'patients'), where('__name__', '==', id)));
-    const patient = (await getDocs(query(collection(db, 'patients')))).docs.find(d => d.id === id)?.data();
+    const docRef = doc(db, 'patients', id);
+    const docSnap = await getDoc(docRef);
+    const patient = docSnap.data();
     
     if (patient) {
         document.getElementById('patientId').value = id;
@@ -303,7 +381,13 @@ window.deletePatient = async (id) => {
 
 // ==================== APPOINTMENTS CRUD ====================
 async function loadPatientSelects() {
-    const patientsSnapshot = await getDocs(collection(db, 'patients'));
+    let patientsQuery = collection(db, 'patients');
+    const filters = getHospitalFilter();
+    if (filters.length > 0) {
+        patientsQuery = query(collection(db, 'patients'), ...filters);
+    }
+    
+    const patientsSnapshot = await getDocs(patientsQuery);
     const options = '<option value="">Select Patient</option>' + 
         patientsSnapshot.docs.map(doc => `<option value="${doc.id}">${sanitize(doc.data().name)}</option>`).join('');
     
@@ -333,6 +417,7 @@ async function saveAppointment() {
     try {
         await addDoc(collection(db, 'appointments'), {
             patientId, date, time, dentist, status, notes,
+            hospitalId: isSuperAdmin() ? null : currentHospitalId,
             createdAt: Timestamp.now(),
             createdBy: currentUser?.uid
         });
@@ -354,7 +439,13 @@ function clearAppointmentForm() {
 async function loadAppointments() {
     if (!hasPermission('view_appointments')) return;
     
-    onSnapshot(collection(db, 'appointments'), async (snapshot) => {
+    let appointmentsQuery = collection(db, 'appointments');
+    const filters = getHospitalFilter();
+    if (filters.length > 0) {
+        appointmentsQuery = query(collection(db, 'appointments'), ...filters);
+    }
+    
+    onSnapshot(appointmentsQuery, async (snapshot) => {
         const tbody = document.getElementById('appointmentsTableBody');
         let html = '';
         
@@ -384,7 +475,6 @@ async function loadAppointments() {
         
         tbody.innerHTML = html || '<tr><td colspan="6" style="text-align: center;">No appointments found</td></tr>';
         
-        // Update dashboard
         const today = new Date().toISOString().split('T')[0];
         const todayCount = snapshot.docs.filter(d => d.data().date === today).length;
         document.getElementById('todayAppointments').textContent = todayCount;
@@ -419,6 +509,7 @@ async function saveTreatment() {
     try {
         await addDoc(collection(db, 'treatments'), {
             patientId, type, date, cost, notes,
+            hospitalId: isSuperAdmin() ? null : currentHospitalId,
             createdAt: Timestamp.now()
         });
         showNotification('Treatment saved successfully');
@@ -439,7 +530,13 @@ function clearTreatmentForm() {
 async function loadTreatments() {
     if (!hasPermission('view_treatments')) return;
     
-    onSnapshot(collection(db, 'treatments'), async (snapshot) => {
+    let treatmentsQuery = collection(db, 'treatments');
+    const filters = getHospitalFilter();
+    if (filters.length > 0) {
+        treatmentsQuery = query(collection(db, 'treatments'), ...filters);
+    }
+    
+    onSnapshot(treatmentsQuery, async (snapshot) => {
         const tbody = document.getElementById('treatmentsTableBody');
         let html = '';
         
@@ -497,6 +594,7 @@ async function saveBilling() {
     try {
         await addDoc(collection(db, 'billing'), {
             patientId, amount, status, dueDate, description,
+            hospitalId: isSuperAdmin() ? null : currentHospitalId,
             createdAt: Timestamp.now()
         });
         showNotification('Invoice created successfully');
@@ -517,7 +615,13 @@ function clearBillingForm() {
 async function loadBilling() {
     if (!hasPermission('view_billing')) return;
     
-    onSnapshot(collection(db, 'billing'), async (snapshot) => {
+    let billingQuery = collection(db, 'billing');
+    const filters = getHospitalFilter();
+    if (filters.length > 0) {
+        billingQuery = query(collection(db, 'billing'), ...filters);
+    }
+    
+    onSnapshot(billingQuery, async (snapshot) => {
         const tbody = document.getElementById('billingTableBody');
         let html = '';
         let pendingTotal = 0;
@@ -579,6 +683,7 @@ async function saveInventory() {
     try {
         await addDoc(collection(db, 'inventory'), {
             name, quantity, price, category,
+            hospitalId: isSuperAdmin() ? null : currentHospitalId,
             createdAt: Timestamp.now()
         });
         showNotification('Inventory item added successfully');
@@ -598,7 +703,13 @@ function clearInventoryForm() {
 async function loadInventory() {
     if (!hasPermission('view_inventory')) return;
     
-    onSnapshot(collection(db, 'inventory'), (snapshot) => {
+    let inventoryQuery = collection(db, 'inventory');
+    const filters = getHospitalFilter();
+    if (filters.length > 0) {
+        inventoryQuery = query(collection(db, 'inventory'), ...filters);
+    }
+    
+    onSnapshot(inventoryQuery, (snapshot) => {
         const tbody = document.getElementById('inventoryTableBody');
         let html = '';
         
@@ -628,10 +739,10 @@ window.deleteInventory = async (id) => {
     }
 };
 
-// ==================== USERS MANAGEMENT (ADMIN ONLY) ====================
-async function saveUser() {
+// ==================== STAFF USERS MANAGEMENT ====================
+async function saveStaffUser() {
     if (!hasPermission('manage_users')) {
-        showNotification('Only admins can manage users', 'error');
+        showNotification('You don\'t have permission to manage users', 'error');
         return;
     }
     
@@ -659,10 +770,11 @@ async function saveUser() {
             name: name,
             email: email,
             role: role,
+            hospitalId: isSuperAdmin() ? null : currentHospitalId,
             createdAt: Timestamp.now()
         });
         
-        showNotification('User created successfully');
+        showNotification('Staff user created successfully');
         clearUserForm();
     } catch (error) {
         showNotification('Error: ' + error.message, 'error');
@@ -676,50 +788,164 @@ function clearUserForm() {
     document.getElementById('userRole').value = 'receptionist';
 }
 
-async function loadUsers() {
+async function loadStaffUsers() {
     if (!hasPermission('manage_users')) return;
     
-    onSnapshot(collection(db, 'users'), (snapshot) => {
+    let usersQuery = collection(db, 'users');
+    const filters = getHospitalFilter();
+    if (filters.length > 0 && !isSuperAdmin()) {
+        usersQuery = query(collection(db, 'users'), ...filters);
+    }
+    
+    onSnapshot(usersQuery, (snapshot) => {
         const tbody = document.getElementById('usersTableBody');
         let html = '';
         
         snapshot.forEach(doc => {
             const user = doc.data();
-            if (user.role !== 'admin') {
-                html += `
-                    <tr>
-                        <td>${sanitize(user.name)}</td>
-                        <td>${sanitize(user.email)}</td>
-                        <td><span class="role-badge role-${user.role}">${user.role}</span></td>
-                        <td>
-                            <button class="action-btn delete-btn" onclick="deleteUser('${doc.id}')">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            }
+            html += `
+                <tr>
+                    <td>${sanitize(user.name)}</td>
+                    <td>${sanitize(user.email)}</td>
+                    <td><span class="role-badge role-${user.role}">${user.role}</span></td>
+                    <td>
+                        <button class="action-btn delete-btn" onclick="deleteStaffUser('${doc.id}')">Delete</button>
+                    </td>
+                </tr>
+            `;
         });
         
-        tbody.innerHTML = html || '<tr><td colspan="4" style="text-align: center;">No users found</td></tr>';
+        tbody.innerHTML = html || '<tr><td colspan="4" style="text-align: center;">No staff users found</td></tr>';
     });
 }
 
-window.deleteUser = async (id) => {
-    if (confirm('Delete this user?')) {
+window.deleteStaffUser = async (id) => {
+    if (confirm('Delete this staff user?')) {
         await deleteDoc(doc(db, 'users', id));
-        showNotification('User deleted');
+        showNotification('Staff user deleted');
     }
 };
 
-// ==================== DASHBOARD ====================
-async function loadDashboard() {
-    if (!hasPermission('view_dashboard')) return;
-    await loadPatientSelects();
+// ==================== HOSPITAL MANAGEMENT (SUPER ADMIN ONLY) ====================
+async function saveHospital() {
+    if (!isSuperAdmin()) {
+        showNotification('Only Super Admin can manage hospitals', 'error');
+        return;
+    }
+    
+    const name = document.getElementById('hospitalName').value.trim();
+    const adminEmail = document.getElementById('hospitalAdminEmail').value.trim();
+    const phone = document.getElementById('hospitalPhone').value;
+    const address = document.getElementById('hospitalAddress').value;
+    const plan = document.getElementById('hospitalPlan').value;
+    const status = document.getElementById('hospitalStatus').value;
+    const expiry = document.getElementById('hospitalExpiry').value;
+    
+    if (!name || !adminEmail) {
+        showNotification('Hospital name and admin email are required', 'error');
+        return;
+    }
+    
+    try {
+        const hospitalId = `hospital_${Date.now()}`;
+        
+        await addDoc(collection(db, 'hospitals'), {
+            hospitalId: hospitalId,
+            name: name,
+            adminEmail: adminEmail,
+            phone: phone,
+            address: address,
+            plan: plan,
+            status: status,
+            expiryDate: expiry,
+            createdAt: Timestamp.now()
+        });
+        
+        showNotification('Hospital added successfully!');
+        clearHospitalForm();
+        loadHospitals();
+    } catch (error) {
+        showNotification('Error: ' + error.message, 'error');
+    }
 }
+
+function clearHospitalForm() {
+    document.getElementById('hospitalName').value = '';
+    document.getElementById('hospitalAdminEmail').value = '';
+    document.getElementById('hospitalPhone').value = '';
+    document.getElementById('hospitalAddress').value = '';
+    document.getElementById('hospitalPlan').value = 'trial';
+    document.getElementById('hospitalStatus').value = 'active';
+    document.getElementById('hospitalExpiry').value = '';
+}
+
+async function loadHospitals() {
+    if (!isSuperAdmin()) return;
+    
+    onSnapshot(collection(db, 'hospitals'), (snapshot) => {
+        const tbody = document.getElementById('hospitalsTableBody');
+        let html = '';
+        
+        snapshot.forEach(doc => {
+            const h = doc.data();
+            html += `
+                <tr>
+                    <td>${sanitize(h.name)}</td>
+                    <td>${sanitize(h.adminEmail)}</td>
+                    <td>${h.plan}</td>
+                    <td><span class="status-badge status-${h.status}">${h.status}</span></td>
+                    <td>${h.expiryDate || 'N/A'}</td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editHospital('${doc.id}')">Edit</button>
+                        <button class="action-btn delete-btn" onclick="suspendHospital('${doc.id}')">Suspend</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html || '<tr><td colspan="6" style="text-align: center;">No hospitals found</td></tr>';
+    });
+}
+
+window.editHospital = async (id) => {
+    const docRef = doc(db, 'hospitals', id);
+    const docSnap = await getDoc(docRef);
+    const hospital = docSnap.data();
+    
+    if (hospital) {
+        document.getElementById('hospitalName').value = hospital.name;
+        document.getElementById('hospitalAdminEmail').value = hospital.adminEmail;
+        document.getElementById('hospitalPhone').value = hospital.phone || '';
+        document.getElementById('hospitalAddress').value = hospital.address || '';
+        document.getElementById('hospitalPlan').value = hospital.plan;
+        document.getElementById('hospitalStatus').value = hospital.status;
+        document.getElementById('hospitalExpiry').value = hospital.expiryDate || '';
+        
+        // Delete the old one and create new (simplest approach)
+        if (confirm('Update this hospital? The old record will be replaced.')) {
+            await deleteDoc(docRef);
+            await saveHospital();
+        }
+    }
+};
+
+window.suspendHospital = async (id) => {
+    if (confirm('Suspend this hospital? They won\'t be able to access the system.')) {
+        await updateDoc(doc(db, 'hospitals', id), {
+            status: 'suspended',
+            updatedAt: Timestamp.now()
+        });
+        showNotification('Hospital suspended');
+    }
+};
 
 // ==================== NAVIGATION ====================
 function showSection(sectionId) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById(sectionId).classList.add('active');
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.classList.add('active');
+    }
     
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
@@ -731,26 +957,36 @@ function showSection(sectionId) {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if user is already logged in
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // Check user role
-            getDocs(query(collection(db, 'users'), where('uid', '==', user.uid)))
-                .then(snapshot => {
-                    let userRole = 'receptionist';
-                    if (!snapshot.empty) {
-                        userRole = snapshot.docs[0].data().role;
-                    }
-                    currentUser = { uid: user.uid, email: user.email, role: userRole };
-                    currentUserRole = userRole;
-                    localStorage.setItem('dentalUser', JSON.stringify(currentUser));
-                    showApp();
-                })
-                .catch(() => showLogin());
+            const userQuery = await getDocs(query(collection(db, 'users'), where('uid', '==', user.uid)));
+            let userRole = 'receptionist';
+            let hospitalId = null;
+            
+            if (!userQuery.empty) {
+                const userData = userQuery.docs[0].data();
+                userRole = userData.role;
+                hospitalId = userData.hospitalId;
+            }
+            
+            if (user.email === SUPER_ADMIN_EMAIL) {
+                userRole = 'superadmin';
+                hospitalId = null;
+            }
+            
+            currentUser = { uid: user.uid, email: user.email, role: userRole };
+            currentUserRole = userRole;
+            currentHospitalId = hospitalId;
+            
+            localStorage.setItem('dentalUser', JSON.stringify(currentUser));
+            localStorage.setItem('dentalHospitalId', hospitalId);
+            
+            showApp();
         } else {
             const storedUser = localStorage.getItem('dentalUser');
             if (storedUser) {
                 localStorage.removeItem('dentalUser');
+                localStorage.removeItem('dentalHospitalId');
             }
             showLogin();
         }
@@ -765,7 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('saveTreatmentBtn').onclick = saveTreatment;
     document.getElementById('saveBillingBtn').onclick = saveBilling;
     document.getElementById('saveInventoryBtn').onclick = saveInventory;
-    document.getElementById('saveUserBtn').onclick = saveUser;
+    document.getElementById('saveUserBtn').onclick = saveStaffUser;
+    document.getElementById('saveHospitalBtn').onclick = saveHospital;
     
     // Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -784,9 +1021,10 @@ document.addEventListener('DOMContentLoaded', () => {
 window.showSection = showSection;
 window.editPatient = editPatient;
 window.deletePatient = deletePatient;
-window.editAppointment = window.editAppointment;
 window.deleteAppointment = deleteAppointment;
 window.deleteTreatment = deleteTreatment;
 window.deleteBilling = deleteBilling;
 window.deleteInventory = deleteInventory;
-window.deleteUser = deleteUser;
+window.deleteStaffUser = deleteStaffUser;
+window.editHospital = editHospital;
+window.suspendHospital = suspendHospital;
