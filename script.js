@@ -1,3 +1,5 @@
+// ==================== FIREBASE IMPORTS ====================
+// We use the CDN version for easy running with Live Server
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
     getAuth, 
@@ -22,12 +24,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ==================== FIREBASE CONFIGURATION ====================
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
+// These are your specific project keys
 const firebaseConfig = {
   apiKey: "AIzaSyCnVrv-PkGB_s_RW6ILTuK5W_H1rR07diY",
   authDomain: "dentalcare-pro-d5c6d.firebaseapp.com",
@@ -44,8 +41,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // ==================== SUPER ADMIN CONFIGURATION ====================
-// CHANGE THIS TO YOUR EMAIL ADDRESS!
-const SUPER_ADMIN_EMAIL = "rammadan1213@gmail.com"; // ← CHANGE THIS TO YOUR EMAIL!
+const SUPER_ADMIN_EMAIL = "rammadan1213@gmail.com"; 
 
 // ==================== PERMISSIONS SYSTEM ====================
 const PERMISSIONS = {
@@ -85,6 +81,7 @@ let currentHospitalId = null;
 // ==================== HELPER FUNCTIONS ====================
 function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
+    if (!notification) return;
     notification.textContent = message;
     notification.style.borderLeftColor = type === 'error' ? '#ef4444' : '#10b981';
     notification.classList.add('show');
@@ -108,13 +105,9 @@ function isSuperAdmin() {
 }
 
 function getHospitalFilter(collectionName = null) {
-    if (isSuperAdmin()) {
-        return []; // Super admin sees ALL data
-    }
-    if (currentHospitalId) {
-        return [where("hospitalId", "==", currentHospitalId)];
-    }
-    return [where("hospitalId", "==", "none")]; // No data if no hospital
+    if (isSuperAdmin()) return []; 
+    if (currentHospitalId) return [where("hospitalId", "==", currentHospitalId)];
+    return [where("hospitalId", "==", "none")]; 
 }
 
 // ==================== AUTHENTICATION ====================
@@ -133,7 +126,6 @@ async function handleLogin() {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
-        // Get user role and hospital from Firestore
         const userQuery = await getDocs(query(collection(db, 'users'), where('uid', '==', user.uid)));
         let userRole = 'receptionist';
         let hospitalId = null;
@@ -144,30 +136,9 @@ async function handleLogin() {
             hospitalId = userData.hospitalId;
         }
         
-        // Check if super admin
         if (email === SUPER_ADMIN_EMAIL) {
             userRole = 'superadmin';
             hospitalId = null;
-        }
-        
-        // If not super admin, check hospital status
-        if (email !== SUPER_ADMIN_EMAIL && hospitalId) {
-            const hospitalQuery = await getDocs(query(collection(db, 'hospitals'), where('hospitalId', '==', hospitalId)));
-            if (!hospitalQuery.empty) {
-                const hospital = hospitalQuery.docs[0].data();
-                if (hospital.status !== 'active') {
-                    await signOut(auth);
-                    errorDiv.textContent = 'Your clinic account is suspended. Please contact support.';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
-                if (hospital.expiryDate && new Date(hospital.expiryDate) < new Date()) {
-                    await signOut(auth);
-                    errorDiv.textContent = 'Your subscription has expired. Please renew.';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
-            }
         }
         
         currentUser = { uid: user.uid, email: user.email, role: userRole };
@@ -212,7 +183,6 @@ function showApp() {
     updateUserInfo();
     setupNavigationPermissions();
     
-    // Load all data
     loadDashboard();
     loadPatients();
     loadAppointments();
@@ -252,7 +222,6 @@ function setupNavigationPermissions() {
 async function loadDashboard() {
     if (!hasPermission('view_dashboard')) return;
     
-    // Show hospital name if not super admin
     if (!isSuperAdmin() && currentHospitalId) {
         const hospitalQuery = await getDocs(query(collection(db, 'hospitals'), where('hospitalId', '==', currentHospitalId)));
         if (!hospitalQuery.empty) {
@@ -352,39 +321,6 @@ async function loadPatients() {
     });
 }
 
-window.editPatient = async (id) => {
-    const docRef = doc(db, 'patients', id);
-    const docSnap = await getDoc(docRef);
-    const patient = docSnap.data();
-    
-    if (patient) {
-        document.getElementById('patientId').value = id;
-        document.getElementById('patientName').value = patient.name;
-        document.getElementById('patientPhone').value = patient.phone;
-        document.getElementById('patientEmail').value = patient.email || '';
-        document.getElementById('patientAddress').value = patient.address || '';
-        document.getElementById('patientDob').value = patient.dob || '';
-        document.getElementById('patientHistory').value = patient.history || '';
-        document.querySelector('#patients .form-grid').scrollIntoView({ behavior: 'smooth' });
-    }
-};
-
-window.deletePatient = async (id) => {
-    if (!hasPermission('delete_patients')) {
-        showNotification('You don\'t have permission to delete patients', 'error');
-        return;
-    }
-    
-    if (confirm('Are you sure you want to delete this patient?')) {
-        try {
-            await deleteDoc(doc(db, 'patients', id));
-            showNotification('Patient deleted successfully');
-        } catch (error) {
-            showNotification('Error: ' + error.message, 'error');
-        }
-    }
-};
-
 // ==================== APPOINTMENTS CRUD ====================
 async function loadPatientSelects() {
     let patientsQuery = collection(db, 'patients');
@@ -472,7 +408,6 @@ async function loadAppointments() {
                     <td>${sanitize(apt.dentist || 'N/A')}</td>
                     <td><span class="status-badge status-${apt.status}">${apt.status || 'scheduled'}</span></td>
                     <td>
-                        ${hasPermission('edit_appointments') ? `<button class="action-btn edit-btn" onclick="editAppointment('${docSnap.id}')">Edit</button>` : ''}
                         ${hasPermission('delete_appointments') ? `<button class="action-btn delete-btn" onclick="deleteAppointment('${docSnap.id}')">Delete</button>` : ''}
                     </td>
                 </tr>
@@ -483,16 +418,10 @@ async function loadAppointments() {
         
         const today = new Date().toISOString().split('T')[0];
         const todayCount = snapshot.docs.filter(d => d.data().date === today).length;
-        document.getElementById('todayAppointments').textContent = todayCount;
+        const totalAptElem = document.getElementById('todayAppointments');
+        if (totalAptElem) totalAptElem.textContent = todayCount;
     });
 }
-
-window.deleteAppointment = async (id) => {
-    if (confirm('Delete this appointment?')) {
-        await deleteDoc(doc(db, 'appointments', id));
-        showNotification('Appointment deleted');
-    }
-};
 
 // ==================== TREATMENTS CRUD ====================
 async function saveTreatment() {
@@ -572,13 +501,6 @@ async function loadTreatments() {
     });
 }
 
-window.deleteTreatment = async (id) => {
-    if (confirm('Delete this treatment record?')) {
-        await deleteDoc(doc(db, 'treatments', id));
-        showNotification('Treatment deleted');
-    }
-};
-
 // ==================== BILLING CRUD ====================
 async function saveBilling() {
     if (!hasPermission('add_billing')) {
@@ -657,17 +579,12 @@ async function loadBilling() {
         }
         
         tbody.innerHTML = html || '<tr><td colspan="5" style="text-align: center;">No invoices found</td></tr>';
-        document.getElementById('pendingBills').textContent = `$${pendingTotal}`;
-        document.getElementById('monthlyRevenue').textContent = `$${pendingTotal}`;
+        const pendingElem = document.getElementById('pendingBills');
+        const revElem = document.getElementById('monthlyRevenue');
+        if (pendingElem) pendingElem.textContent = `$${pendingTotal}`;
+        if (revElem) revElem.textContent = `$${pendingTotal}`;
     });
 }
-
-window.deleteBilling = async (id) => {
-    if (confirm('Delete this invoice?')) {
-        await deleteDoc(doc(db, 'billing', id));
-        showNotification('Invoice deleted');
-    }
-};
 
 // ==================== INVENTORY CRUD ====================
 async function saveInventory() {
@@ -738,13 +655,6 @@ async function loadInventory() {
     });
 }
 
-window.deleteInventory = async (id) => {
-    if (confirm('Delete this inventory item?')) {
-        await deleteDoc(doc(db, 'inventory', id));
-        showNotification('Item deleted');
-    }
-};
-
 // ==================== STAFF USERS MANAGEMENT ====================
 async function saveStaffUser() {
     if (!hasPermission('manage_users')) {
@@ -759,11 +669,6 @@ async function saveStaffUser() {
     
     if (!name || !email || !password) {
         showNotification('All fields are required', 'error');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showNotification('Password must be at least 6 characters', 'error');
         return;
     }
     
@@ -825,13 +730,6 @@ async function loadStaffUsers() {
     });
 }
 
-window.deleteStaffUser = async (id) => {
-    if (confirm('Delete this staff user?')) {
-        await deleteDoc(doc(db, 'users', id));
-        showNotification('Staff user deleted');
-    }
-};
-
 // ==================== HOSPITAL MANAGEMENT (SUPER ADMIN ONLY) ====================
 async function saveHospital() {
     if (!isSuperAdmin()) {
@@ -869,7 +767,6 @@ async function saveHospital() {
         
         showNotification('Hospital added successfully!');
         clearHospitalForm();
-        loadHospitals();
     } catch (error) {
         showNotification('Error: ' + error.message, 'error');
     }
@@ -902,7 +799,6 @@ async function loadHospitals() {
                     <td><span class="status-badge status-${h.status}">${h.status}</span></td>
                     <td>${h.expiryDate || 'N/A'}</td>
                     <td>
-                        <button class="action-btn edit-btn" onclick="editHospital('${doc.id}')">Edit</button>
                         <button class="action-btn delete-btn" onclick="suspendHospital('${doc.id}')">Suspend</button>
                     </td>
                 </tr>
@@ -913,52 +809,74 @@ async function loadHospitals() {
     });
 }
 
-window.editHospital = async (id) => {
-    const docRef = doc(db, 'hospitals', id);
-    const docSnap = await getDoc(docRef);
-    const hospital = docSnap.data();
-    
-    if (hospital) {
-        document.getElementById('hospitalName').value = hospital.name;
-        document.getElementById('hospitalAdminEmail').value = hospital.adminEmail;
-        document.getElementById('hospitalPhone').value = hospital.phone || '';
-        document.getElementById('hospitalAddress').value = hospital.address || '';
-        document.getElementById('hospitalPlan').value = hospital.plan;
-        document.getElementById('hospitalStatus').value = hospital.status;
-        document.getElementById('hospitalExpiry').value = hospital.expiryDate || '';
-        
-        // Delete the old one and create new (simplest approach)
-        if (confirm('Update this hospital? The old record will be replaced.')) {
-            await deleteDoc(docRef);
-            await saveHospital();
-        }
+// ==================== GLOBAL ACTIONS ====================
+window.deletePatient = async (id) => {
+    if (confirm('Delete this patient?')) {
+        await deleteDoc(doc(db, 'patients', id));
+        showNotification('Patient deleted');
+    }
+};
+
+window.editPatient = async (id) => {
+    const docSnap = await getDoc(doc(db, 'patients', id));
+    const p = docSnap.data();
+    if (p) {
+        document.getElementById('patientId').value = id;
+        document.getElementById('patientName').value = p.name;
+        document.getElementById('patientPhone').value = p.phone;
+        document.getElementById('patientEmail').value = p.email || '';
+        document.getElementById('patientAddress').value = p.address || '';
+        document.getElementById('patientDob').value = p.dob || '';
+        document.getElementById('patientHistory').value = p.history || '';
+    }
+};
+
+window.deleteAppointment = async (id) => {
+    if (confirm('Delete appointment?')) {
+        await deleteDoc(doc(db, 'appointments', id));
+        showNotification('Appointment deleted');
+    }
+};
+
+window.deleteTreatment = async (id) => {
+    if (confirm('Delete treatment?')) {
+        await deleteDoc(doc(db, 'treatments', id));
+        showNotification('Treatment deleted');
+    }
+};
+
+window.deleteBilling = async (id) => {
+    if (confirm('Delete billing?')) {
+        await deleteDoc(doc(db, 'billing', id));
+        showNotification('Invoice deleted');
+    }
+};
+
+window.deleteInventory = async (id) => {
+    if (confirm('Delete item?')) {
+        await deleteDoc(doc(db, 'inventory', id));
+        showNotification('Item deleted');
+    }
+};
+
+window.deleteStaffUser = async (id) => {
+    if (confirm('Delete user?')) {
+        await deleteDoc(doc(db, 'users', id));
+        showNotification('User deleted');
     }
 };
 
 window.suspendHospital = async (id) => {
-    if (confirm('Suspend this hospital? They won\'t be able to access the system.')) {
-        await updateDoc(doc(db, 'hospitals', id), {
-            status: 'suspended',
-            updatedAt: Timestamp.now()
-        });
+    if (confirm('Suspend hospital?')) {
+        await updateDoc(doc(db, 'hospitals', id), { status: 'suspended' });
         showNotification('Hospital suspended');
     }
 };
 
-// ==================== NAVIGATION ====================
 function showSection(sectionId) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     const section = document.getElementById(sectionId);
-    if (section) {
-        section.classList.add('active');
-    }
-    
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('data-section') === sectionId) {
-            link.classList.add('active');
-        }
-    });
+    if (section) section.classList.add('active');
 }
 
 // ==================== INITIALIZATION ====================
@@ -983,22 +901,12 @@ document.addEventListener('DOMContentLoaded', () => {
             currentUser = { uid: user.uid, email: user.email, role: userRole };
             currentUserRole = userRole;
             currentHospitalId = hospitalId;
-            
-            localStorage.setItem('dentalUser', JSON.stringify(currentUser));
-            localStorage.setItem('dentalHospitalId', hospitalId);
-            
             showApp();
         } else {
-            const storedUser = localStorage.getItem('dentalUser');
-            if (storedUser) {
-                localStorage.removeItem('dentalUser');
-                localStorage.removeItem('dentalHospitalId');
-            }
             showLogin();
         }
     });
     
-    // Event Listeners
     document.getElementById('loginBtn').onclick = handleLogin;
     document.getElementById('savePatientBtn').onclick = savePatient;
     document.getElementById('clearPatientBtn').onclick = clearPatientForm;
@@ -1010,9 +918,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('saveUserBtn').onclick = saveStaffUser;
     document.getElementById('saveHospitalBtn').onclick = saveHospital;
     
-    // Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.onclick = (e) => {
+        link.onclick = () => {
             if (link.classList.contains('logout-btn')) {
                 handleLogout();
             } else {
@@ -1023,14 +930,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Make functions available globally
 window.showSection = showSection;
-window.editPatient = editPatient;
-window.deletePatient = deletePatient;
-window.deleteAppointment = deleteAppointment;
-window.deleteTreatment = deleteTreatment;
-window.deleteBilling = deleteBilling;
-window.deleteInventory = deleteInventory;
-window.deleteStaffUser = deleteStaffUser;
-window.editHospital = editHospital;
-window.suspendHospital = suspendHospital;
